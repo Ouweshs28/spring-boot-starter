@@ -21,6 +21,9 @@ function Fail          { param($m) Write-Host "ERROR: $m" -ForegroundColor Red; 
 
 $Utf8NoBom = New-Object System.Text.UTF8Encoding $false
 
+# Sync the .NET process working directory with PowerShell's current location.
+[System.IO.Directory]::SetCurrentDirectory((Get-Location).Path)
+
 Write-Host ""
 Write-Info "+------------------------------------------+"
 Write-Info "|        Add New Service Module            |"
@@ -248,4 +251,5 @@ Write-Host ""
 Write-Host "  4. Rebuild the project:"
 Write-Host "       mvn clean install"
 Write-Host ""
+
 
