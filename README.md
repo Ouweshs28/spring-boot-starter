@@ -108,6 +108,44 @@ H2 credentials: JDBC URL `jdbc:h2:mem:template` · username `sa` · password *(b
 
 ---
 
+## Adding a Service Module
+
+The project ships with a helper script that scaffolds a new Maven service module, wires it into the build, and prints next steps — all in one command.
+
+### PowerShell (Windows)
+
+```powershell
+.\add-module.ps1 -ModuleName payment
+```
+
+### Bash (Linux / macOS)
+
+```bash
+chmod +x add-module.sh
+./add-module.sh --module-name payment
+```
+
+Both scripts will prompt for confirmation before making any changes.
+
+### What the script does
+
+| Step | Action |
+|------|--------|
+| **Validates** | Checks module name format, reserved names, and that the module doesn't already exist |
+| **Creates** | `{project}-app/{project}-{module}/src/main/java/…` and `src/test/java/…` |
+| **Generates** | A ready-to-use `pom.xml` pre-wired with persistence, MapStruct, validation, and Swagger deps |
+| **Registers** | Adds `<module>` to `{project}-app/pom.xml` and a version-managed `<dependency>` to `dependencyManagement` |
+| **Guides** | Prints the dependency snippet needed to consume the module from `{project}-rest` or another module |
+
+### Module name rules
+
+- Lowercase letters, digits, and hyphens only
+- Must start with a letter, minimum 2 characters
+- Must not end with a hyphen or contain consecutive hyphens
+- Reserved names: `app`, `parent`, `rest`, `persistence`, `service`, `image`, `core`, `common`, `web`, `api`
+
+---
+
 ## Build and Run with Docker
 
 ```bash
