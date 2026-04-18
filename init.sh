@@ -309,18 +309,14 @@ EOF
   fi
 fi
 
-# ---- [5/5] Reset git history --------------------------------------------------
+# ---- [5/5] Reset git history and remove remote --------------------------------
 echo ""
-warn "  [5/5] Reset git history?"
-warn "        This removes the template's commit history and starts fresh."
-read -rp "        Reset? [y/N] " RESET_GIT
-if [[ "$RESET_GIT" =~ ^[Yy]$ ]]; then
-  rm -rf .git
-  git init -q
-  git add -A
-  git commit -q -m "chore: initial project from spring-boot-starter"
-  success "  Git repository re-initialized with a clean initial commit."
-fi
+info "  [5/5] Resetting git history..."
+rm -rf .git
+git init -q
+git add -A
+git commit -q -m "chore: initial project from spring-boot-starter"
+success "  Git repository initialized with a clean history (no remote)."
 
 # ---- Remove bootstrap / init scripts ------------------------------------------
 info "  Cleaning up setup scripts..."

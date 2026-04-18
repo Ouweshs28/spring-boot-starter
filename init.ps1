@@ -283,3 +283,31 @@ if ($moduleCount -gt 0) {
     }
 }
 
+# ---- [5/5] Reset git history and remove remote --------------------------------
+Write-Host ""
+Write-Info "  [5/5] Resetting git history..."
+
+if (Test-Path ".git") { Remove-Item -Recurse -Force ".git" }
+git init -q
+git add -A | Out-Null
+git commit -q -m "chore: initial project from spring-boot-starter" | Out-Null
+Write-Success "  Git repository initialized with a clean history (no remote)."
+
+# ---- Remove bootstrap / init scripts ------------------------------------------
+Write-Info "  Cleaning up setup scripts..."
+foreach ($s in @("bootstrap.ps1","bootstrap.sh","init.ps1","init.sh")) {
+    if (Test-Path $s) { Remove-Item -Force $s }
+}
+Write-Success "  Setup scripts removed."
+
+# ---- Done ---------------------------------------------------------------------
+Write-Host ""
+Write-Success "  Done!  Project '$ProjectName' is ready."
+Write-Host ""
+Write-Host "  Next steps:"
+Write-Host "    mvn clean install"
+Write-Host "    cd $ProjectName-app\$ProjectName-rest ; mvn spring-boot:run"
+Write-Host ""
+Write-Host "    Swagger UI  ->  http://localhost:8080/swagger-ui/index.html"
+Write-Host "    H2 Console  ->  http://localhost:8080/h2-console"
+Write-Host ""
