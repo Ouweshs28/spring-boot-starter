@@ -1,0 +1,31 @@
+POST {{host}}/api/users
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "gender": "MALE"
+}
+
+###
+
+PUT {{host}}/api/users
+Content-Type: application/json
+
+{
+  "id": 1,
+  "firstName": "Muhummad Ouwesh",
+  "lastName": "Seeroo",
+  "gender": "MALE"
+}
+
+###
+
+GET {{host}}/api/users/6
+Accept: application/json
+
+###
+GET {{host}}/api/users
+Accept: application/json
+
+###

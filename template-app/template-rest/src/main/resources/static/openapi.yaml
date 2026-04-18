@@ -1,0 +1,253 @@
+openapi: 3.0.3
+info:
+  description: Api Documentation
+  version: '1.0'
+  title: Project Template Documentation
+paths:
+  /api/users:
+    post:
+      tags:
+        - user
+      summary: Add a user to the system
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateUpdateRequest'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: integer
+                format: int64
+                example: 1
+        201:
+          description: Created
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden
+        404:
+          description: Not Found
+    put:
+      tags:
+        - user
+      summary: Update an user
+      operationId: updateUser
+      description: user that needs to be updated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateUpdateRequest'
+      responses:
+        200:
+          description: User has been updated
+        400:
+          description: Invalid data
+        404:
+          description: User not found
+        405:
+          description: Validation exception
+    get:
+      tags:
+        - user
+      summary: search for all users
+      operationId: findAllUsers
+      description: search for all users, the api returns all users if no criteria is provided
+      parameters:
+        - $ref: '#/components/parameters/Criteria'
+        - $ref: '#/components/parameters/Gender'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/SortBy'
+      responses:
+        200:
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResponse'
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden
+  /api/users/{userId}:
+    delete:
+      tags:
+        - user
+      summary: Deletes a user
+      description: deleting a user
+      operationId: deleteUser
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        200:
+          description: OK
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden
+        404:
+          description: Not Found
+    get:
+      tags:
+        - user
+      summary: Find a user by Id
+      operationId: findUserById
+      description: ID of user that needs to be deleted
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        200:
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden
+        404:
+          description: Not Found
+components:
+  schemas:
+    UserCreateUpdateRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+          minLength: 2
+        lastName:
+          type: string
+          minLength: 2
+        gender:
+          $ref: '#/components/schemas/Gender'
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+    PageResponse:
+      type: object
+      properties:
+        number:
+          type: integer
+          format: int32
+          example: 10
+        size:
+          type: integer
+          format: int32
+          example: 25
+        numberOfElements:
+          type: integer
+          format: int32
+          example: 100
+        totalPages:
+          type: integer
+          format: int32
+          example: 4
+        totalElements:
+          type: integer
+          format: int32
+          example: 4
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+    Gender:
+      type: string
+      enum:
+        - MALE
+        - FEMALE
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      description: ID of user that needs to be deleted
+      required: true
+      schema:
+        type: integer
+        format: int64
+        example: 1
+    Criteria:
+      name: criteria
+      in: query
+      description: search parameter
+      required: false
+      schema:
+        type: string
+        example: ouwesh
+    PageNumber:
+      name: page-number
+      in: query
+      description: the page number
+      required: false
+      schema:
+        type: integer
+        example: 0
+        default: 0
+    PageSize:
+      name: page-size
+      in: query
+      description: the page size
+      required: false
+      schema:
+        type: integer
+        example: 10
+        default: 10
+    SortOrder:
+      name: sort-order
+      description: the sort order either ascending or descending
+      in: query
+      required: false
+      schema:
+        type: string
+        example: ASC
+        default: ASC
+    SortBy:
+      name: sort-by
+      description: attribute to sort by
+      in: query
+      schema:
+        type: string
+        example: firstName
+    Gender:
+      name: gender
+      description: filter used to filter by gender
+      required: false
+      in: query
+      schema:
+        $ref: '#/components/schemas/Gender'

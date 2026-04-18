@@ -1,0 +1,16 @@
+# Exclude all Maven build output — the multi-stage Dockerfile compiles
+**/target/
+
+# IDE / OS noise
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Git metadata
+.git/
+.gitignore
+
+
+!Dockerfile
+!**/pom.xml
