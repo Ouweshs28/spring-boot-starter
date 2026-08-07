@@ -18,7 +18,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -69,6 +69,8 @@
 								<useTags>true</useTags>
 								<useSpringController>true</useSpringController>
 								<interfaceOnly>true</interfaceOnly>
+								<useSpringBoot4>true</useSpringBoot4>
+								<useJackson3>true</useJackson3>
 							</configOptions>
 							<generatorName>spring</generatorName>
 							<generateApis>true</generateApis>
