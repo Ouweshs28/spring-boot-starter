@@ -5,7 +5,6 @@ import com.project.template.model.UserCreateUpdateRequest;
 import com.project.template.model.UserResponse;
 import com.project.template.persistence.entity.UserEntity;
 import com.project.template.persistence.enumeration.GenderEnum;
-import com.project.template.persistence.view.UserView;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -23,8 +22,6 @@ public interface UserMapper {
     UserCreateUpdateRequest mapToUserCreateOrUpdateRequest(UserEntity user);
 
     UserResponse mapToUserResponse(UserEntity user);
-
-    UserResponse mapToUserResponse(UserView userView);
 
     void mapToUpdateUserEntity(@MappingTarget UserEntity user, UserCreateUpdateRequest userUpdateRequest);
 

@@ -10,6 +10,7 @@ import com.project.template.model.UserCreateUpdateRequest;
 import com.project.template.model.UserResponse;
 import com.project.template.persistence.entity.UserEntity;
 import com.project.template.persistence.repository.UserRepository;
+import com.project.template.persistence.repository.UserSpecifications;
 import com.project.template.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -59,13 +60,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageResponse findAllUsers(String criteria, Gender gender, PageRequest pageRequest) {
-        return pageMapper.toPageResponse(userRepository.findAll(criteria, userMapper.toGenderEnum(gender), pageRequest));
+        return pageMapper.toPageResponse(
+                userRepository.findAll(UserSpecifications.filter(criteria, userMapper.toGenderEnum(gender)), pageRequest)
+        );
     }
-
-    @Override
-    public UserEntity findByUsername(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Username :%s not found".formatted(username)));
-    }
-
 }
