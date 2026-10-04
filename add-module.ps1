@@ -2,14 +2,16 @@
 # add-module.ps1  —  Add a new service module to this Spring Boot project
 #
 # Usage:
-#   .\add-module.ps1 -ModuleName <name>
+#   .\add-module.ps1 -ModuleName <name> [-Yes]
 #
 # Examples:
 #   .\add-module.ps1 -ModuleName payment
-#   .\add-module.ps1             # interactive — will prompt for module name
+#   .\add-module.ps1 -ModuleName payment -Yes   # non-interactive
+#   .\add-module.ps1                            # interactive — will prompt for module name
 # -------------------------------------------------------------------------------
 param(
-    [Alias("m")][string]$ModuleName
+    [Alias("m")][string]$ModuleName,
+    [Alias("y")][switch]$Yes
 )
 
 $ErrorActionPreference = "Stop"
@@ -114,10 +116,13 @@ Write-Host "  New module   :  $FullModuleName"
 Write-Host "  Location     :  $ModuleDir"
 Write-Host "  Package      :  $GroupId.$($ModuleName -replace '-','')"
 Write-Host ""
-$confirm = Read-Host "  Proceed? [Y/n]"
-if ($confirm -ne '' -and $confirm -notmatch '^[Yy]$') {
-    Write-Warn "  Aborted."
-    exit 0
+
+if (-not $Yes) {
+    $confirm = Read-Host "  Proceed? [Y/n]"
+    if ($confirm -ne '' -and $confirm -notmatch '^[Yy]$') {
+        Write-Warn "  Aborted."
+        exit 0
+    }
 }
 
 # ---- [1/3] Create directory structure ----------------------------------------
@@ -181,7 +186,7 @@ $PomContent = @"
         <!-- OpenAPI / Swagger annotations -->
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
-            <artifactId>swagger-annotations</artifactId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
         </dependency>
 
         <!-- Test -->
@@ -203,18 +208,32 @@ Write-Info "  [3/3] Registering module in $AppPomPath..."
 # Insert <module> before </modules>
 $AppPomText = $AppPomText -replace '(?m)([ \t]*</modules>)', "`t`t<module>$FullModuleName</module>`r`n`$1"
 
-# Insert <dependency> in dependencyManagement before <!-- Lombok -->
+# Insert <dependency> in dependencyManagement
 $NewDep  = "`t`t<dependency>`r`n"
 $NewDep += "`t`t`t<groupId>$GroupId</groupId>`r`n"
 $NewDep += "`t`t`t<artifactId>$FullModuleName</artifactId>`r`n"
 $NewDep += "`t`t`t<version>`${project.version}</version>`r`n"
 $NewDep += "`t`t</dependency>`r`n"
 
-if ($AppPomText -match '<!-- Lombok -->') {
-    $AppPomText = $AppPomText -replace '(?m)([ \t]*<!-- Lombok -->)', "$NewDep`t`t`$1"
-} else {
+$depInserted = $false
+foreach ($anchor in @('<!-- External dependencies -->', '<!-- Lombok -->', '<!-- Blaze-Persistence BOM')) {
+    if ($AppPomText -match [regex]::Escape($anchor)) {
+        $AppPomText = $AppPomText -replace ("(?m)([ \t]*" + [regex]::Escape($anchor) + ")"), "$NewDep`$1"
+        $depInserted = $true
+        break
+    }
+}
+
+if (-not $depInserted) {
+    if ($AppPomText -match '(?s)(<dependencyManagement>.*?<dependencies>.*?)([ \t]*)(</dependencies>\s*</dependencyManagement>)') {
+        $AppPomText = $AppPomText -replace '(?s)(<dependencyManagement>.*?<dependencies>.*?)([ \t]*)(</dependencies>\s*</dependencyManagement>)', "`$1$NewDep`$2`$3"
+        $depInserted = $true
+    }
+}
+
+if (-not $depInserted) {
     Write-Warn ""
-    Write-Warn "  WARNING: Could not locate '<!-- Lombok -->' anchor in $AppPomPath."
+    Write-Warn "  WARNING: Could not locate suitable insertion point in <dependencyManagement> in $AppPomPath."
     Write-Warn "  Please manually add the following inside <dependencyManagement><dependencies>:"
     Write-Warn ""
     Write-Warn "    <dependency>"
@@ -226,7 +245,29 @@ if ($AppPomText -match '<!-- Lombok -->') {
 }
 
 [System.IO.File]::WriteAllText($AppPomPath, $AppPomText, $Utf8NoBom)
-Write-Success "         + $AppPomPath  (modules + dependencyManagement updated)"
+if ($depInserted) {
+    Write-Success "         + $AppPomPath  (modules + dependencyManagement updated)"
+} else {
+    Write-Success "         + $AppPomPath  (modules updated)"
+}
+
+# Update Dockerfile if present so Docker multi-stage build stays in sync
+$DockerfilePath = "$AppDir\$ProjectName-image\src\main\resources\docker\app\Dockerfile"
+if (Test-Path $DockerfilePath) {
+    $DockerContent = [System.IO.File]::ReadAllText($DockerfilePath, [System.Text.Encoding]::UTF8)
+    if ($DockerContent -notmatch [regex]::Escape("$AppDir/$FullModuleName/pom.xml")) {
+        $copyPomPattern = '(?m)([ \t]*COPY [^\r\n]*-rest/pom\.xml[^\r\n]*)'
+        $newCopyPom = "`r`nCOPY $AppDir/$FullModuleName/pom.xml          $AppDir/$FullModuleName/"
+        $DockerContent = $DockerContent -replace $copyPomPattern, "`$1$newCopyPom"
+
+        $copySrcPattern = '(?m)([ \t]*COPY [^\r\n]*-rest/src[^\r\n]*)'
+        $newCopySrc = "`r`nCOPY $AppDir/$FullModuleName/src         $AppDir/$FullModuleName/src"
+        $DockerContent = $DockerContent -replace $copySrcPattern, "`$1$newCopySrc"
+
+        [System.IO.File]::WriteAllText($DockerfilePath, $DockerContent, $Utf8NoBom)
+        Write-Success "         + $DockerfilePath  (Docker build updated)"
+    }
+}
 
 # ---- Done -------------------------------------------------------------------
 Write-Host ""
@@ -249,7 +290,5 @@ Write-Host "  3. To consume this module from another service module, add the"
 Write-Host "     same block to that module's pom.xml."
 Write-Host ""
 Write-Host "  4. Rebuild the project:"
-Write-Host "       mvn clean install"
+Write-Host "       .\mvnw.cmd clean verify"
 Write-Host ""
-
-

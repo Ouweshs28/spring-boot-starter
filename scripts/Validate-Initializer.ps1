@@ -195,6 +195,69 @@ try {
         Pop-Location
     }
 
+    Write-Step 'Scenario 5: PowerShell add-module script on initialized project'
+    $psAddModuleProject = New-WorkingCopy -Root $validationRoot -Name 'ps-addmod'
+    Invoke-PowerShellInit -WorkingDirectory $psAddModuleProject -Arguments @('-ProjectName', 'ps-mod-app', '-PackageName', 'com.example.psmod', '-ExtraServiceModules', '0') -InputText "yes`nflyway`nyes`n"
+    Push-Location $psAddModuleProject
+    try {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File .\add-module.ps1 -ModuleName 'billing' -Yes
+        if ($LASTEXITCODE -ne 0) {
+            Fail-Test "PowerShell add-module failed in $psAddModuleProject"
+        }
+    } finally {
+        Pop-Location
+    }
+    Assert-PathExists (Join-Path $psAddModuleProject 'ps-mod-app-app\ps-mod-app-billing\pom.xml')
+    Assert-PathExists (Join-Path $psAddModuleProject 'ps-mod-app-app\ps-mod-app-billing\src\main\java\com\example\psmod')
+    Assert-PathExists (Join-Path $psAddModuleProject 'ps-mod-app-app\ps-mod-app-billing\src\test\java\com\example\psmod')
+    Assert-FileContains (Join-Path $psAddModuleProject 'ps-mod-app-app\pom.xml') '<module>ps-mod-app-billing</module>'
+    Assert-FileContains (Join-Path $psAddModuleProject 'ps-mod-app-app\pom.xml') '<artifactId>ps-mod-app-billing</artifactId>'
+    Assert-FileContains (Join-Path $psAddModuleProject 'ps-mod-app-app\ps-mod-app-image\src\main\resources\docker\app\Dockerfile') 'COPY ps-mod-app-app/ps-mod-app-billing/pom.xml'
+    Push-Location $psAddModuleProject
+    try {
+        git add -A
+        git commit -m "Add billing module"
+    } finally {
+        Pop-Location
+    }
+    Assert-GitClean $psAddModuleProject
+    Invoke-MavenVerify $psAddModuleProject
+
+    Write-Step 'Scenario 6: PowerShell bootstrap script'
+    $tempOrigin = Join-Path $validationRoot 'temp-git-origin'
+    Copy-TreeFiltered -Source $repositoryRoot -Destination $tempOrigin
+    Push-Location $tempOrigin
+    try {
+        git init -q
+        git config user.email "test@example.com"
+        git config user.name "Test"
+        git add -A
+        git commit -q -m "test initial commit"
+    } finally {
+        Pop-Location
+    }
+
+    $psBootstrapRoot = Join-Path $validationRoot 'ps-bootstrap-root'
+    New-Item -ItemType Directory -Path $psBootstrapRoot -Force | Out-Null
+    Push-Location $psBootstrapRoot
+    try {
+        $env:REPO_URL = $tempOrigin
+        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repositoryRoot 'bootstrap.ps1') -ProjectName 'ps-boot-app' -PackageName 'com.example.psboot' -MigrationTool 'flyway' -SpringDataJpa 'true' -BlazePersistence 'true' -ExtraServiceModules 0
+        if ($LASTEXITCODE -ne 0) {
+            Fail-Test 'PowerShell bootstrap failed'
+        }
+    } finally {
+        $env:REPO_URL = $null
+        Pop-Location
+    }
+    $psBootProject = Join-Path $psBootstrapRoot 'ps-boot-app'
+    Assert-PathExists (Join-Path $psBootProject 'ps-boot-app-app\ps-boot-app-rest\pom.xml')
+    Assert-PathMissing (Join-Path $psBootProject 'init.ps1')
+    Assert-PathMissing (Join-Path $psBootProject 'init.sh')
+    Assert-PathMissing (Join-Path $psBootProject 'bootstrap.ps1')
+    Assert-PathMissing (Join-Path $psBootProject 'bootstrap.sh')
+    Assert-GitClean $psBootProject
+
     Write-Step 'All PowerShell initializer validation scenarios passed.'
 } finally {
     if (Test-Path $validationRoot) {

@@ -49,7 +49,7 @@ if ($PackageName -notmatch '^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*$') {
 }
 
 # ---- Clone -------------------------------------------------------------------
-$RepoUrl = "https://github.com/Ouweshs28/spring-boot-starter.git"
+$RepoUrl = if ($env:REPO_URL) { $env:REPO_URL } else { "https://github.com/Ouweshs28/spring-boot-starter.git" }
 
 if (Test-Path $ProjectName) {
     Fail "Directory '$ProjectName' already exists."
@@ -58,6 +58,9 @@ if (Test-Path $ProjectName) {
 Write-Host ""
 Write-Info "Cloning template into '$ProjectName'..."
 git clone $RepoUrl $ProjectName
+if ($LASTEXITCODE -ne 0) {
+    Fail "Failed to clone repository from '$RepoUrl'."
+}
 
 Set-Location $ProjectName
 
@@ -77,7 +80,10 @@ if ($PSBoundParameters.ContainsKey("BlazePersistence")) {
 if ($PSBoundParameters.ContainsKey("ExtraServiceModules")) {
     $initArgs += @("-ExtraServiceModules", $ExtraServiceModules)
 }
-& .\init.ps1 @initArgs
+& powershell -NoProfile -ExecutionPolicy Bypass -File .\init.ps1 @initArgs
+if ($LASTEXITCODE -ne 0) {
+    Fail "Initialization failed with exit code $LASTEXITCODE."
+}
 
 Write-Host ""
 Write-Success "Your project '$ProjectName' is ready in ./$ProjectName"

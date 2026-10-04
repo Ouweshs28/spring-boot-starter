@@ -294,6 +294,7 @@ EOF
 
     <dependencyManagement>
         <dependencies>
+            <!-- Internal modules -->
             <dependency>
                 <groupId>${PACKAGE_NAME}</groupId>
                 <artifactId>${PROJECT_NAME}-persistence</artifactId>
@@ -304,6 +305,7 @@ EOF
                 <artifactId>${PROJECT_NAME}-service</artifactId>
                 <version>\${project.version}</version>
             </dependency>
+            <!-- External dependencies -->
 ${blaze_dependency_management}            <dependency>
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
@@ -1340,7 +1342,7 @@ if [[ $MODULE_COUNT -gt 0 ]]; then
         NEW_SVC_FULL="${PROJECT_NAME}-${NEW_SVC_NAME}"
         NEW_SVC_DIR="${PROJECT_NAME}-app/${NEW_SVC_FULL}"
 
-        for f in "${PROJECT_NAME}-app/pom.xml" "${PROJECT_NAME}-app/${PROJECT_NAME}-rest/pom.xml" "${EXISTING_SVC_DIR}/pom.xml"; do
+        for f in "${PROJECT_NAME}-app/pom.xml" "${PROJECT_NAME}-app/${PROJECT_NAME}-rest/pom.xml" "${EXISTING_SVC_DIR}/pom.xml" "${PROJECT_NAME}-app/${PROJECT_NAME}-image/src/main/resources/docker/app/Dockerfile"; do
           [[ -f "$f" ]] && perl -i -0pe "s|\Q${PROJECT_NAME}-service\E|${NEW_SVC_FULL}|g" "$f"
         done
 
@@ -1450,6 +1452,20 @@ if [[ $MODULE_COUNT -gt 0 ]]; then
 EOF
 
     perl -i -0pe "s|([ \t]*</modules>)|\t\t<module>${FULL_MOD}</module>\n\$1|" "$APP_POM"
+    MOD_DEP="\t\t\t<dependency>\n\t\t\t\t<groupId>${PACKAGE_NAME}</groupId>\n\t\t\t\t<artifactId>${FULL_MOD}</artifactId>\n\t\t\t\t<version>\${project.version}</version>\n\t\t\t</dependency>\n"
+    if grep -q "<!-- External dependencies -->" "$APP_POM"; then
+      perl -i -0pe "s|([ \t]*<!-- External dependencies -->)|${MOD_DEP}\$1|" "$APP_POM"
+    elif perl -0777 -ne 'exit 0 if m!<dependencyManagement>.*?</dependencies>\s*</dependencyManagement>!s; exit 1' "$APP_POM"; then
+      perl -i -0777 -pe "s|(<dependencyManagement>.*?<dependencies>.*?)([ \t]*)(</dependencies>\s*</dependencyManagement>)|\$1${MOD_DEP}\$2\$3|s" "$APP_POM"
+    fi
+
+    DOCKERFILE="${PROJECT_NAME}-app/${PROJECT_NAME}-image/src/main/resources/docker/app/Dockerfile"
+    if [[ -f "$DOCKERFILE" ]]; then
+      if ! grep -q "${PROJECT_NAME}-app/${FULL_MOD}/pom.xml" "$DOCKERFILE"; then
+        perl -i -0pe "s|([ \t]*COPY [^\r\n]*-rest/pom\.xml[^\r\n]*)|\\\$1\nCOPY ${PROJECT_NAME}-app/${FULL_MOD}/pom.xml          ${PROJECT_NAME}-app/${FULL_MOD}/|" "$DOCKERFILE"
+        perl -i -0pe "s|([ \t]*COPY [^\r\n]*-rest/src[^\r\n]*)|\\\$1\nCOPY ${PROJECT_NAME}-app/${FULL_MOD}/src         ${PROJECT_NAME}-app/${FULL_MOD}/src|" "$DOCKERFILE"
+      fi
+    fi
     success "  Created: $FULL_MOD"
     CREATED_MODS+=("$MOD_NAME")
   done
