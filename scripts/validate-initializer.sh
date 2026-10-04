@@ -140,4 +140,64 @@ if (
   fail_test 'Expected init.sh to reject JPA disabled + Flyway'
 fi
 
+write_step 'Scenario 5: Bash add-module script on initialized project'
+add_module_project="$(new_working_copy bash-addmod)"
+invoke_initializer "$add_module_project" \
+  --project-name bash-mod-app \
+  --package-name com.example.bashmod \
+  --migration-tool flyway \
+  --spring-data-jpa true \
+  --blaze-persistence true \
+  --extra-service-modules 0
+(
+  cd "$add_module_project"
+  bash ./add-module.sh --module-name billing -y
+  assert_path_exists "bash-mod-app-app/bash-mod-app-billing/pom.xml"
+  assert_path_exists "bash-mod-app-app/bash-mod-app-billing/src/main/java/com/example/bashmod"
+  assert_path_exists "bash-mod-app-app/bash-mod-app-billing/src/test/java/com/example/bashmod"
+  assert_file_contains "bash-mod-app-app/pom.xml" '<module>bash-mod-app-billing</module>'
+  assert_file_contains "bash-mod-app-app/pom.xml" '<artifactId>bash-mod-app-billing</artifactId>'
+  assert_file_contains "bash-mod-app-app/bash-mod-app-image/src/main/resources/docker/app/Dockerfile" 'COPY bash-mod-app-app/bash-mod-app-billing/pom.xml'
+  git add -A
+  git commit -m "Add billing module"
+)
+assert_git_clean "$add_module_project"
+invoke_maven_verify "$add_module_project"
+
+write_step 'Scenario 6: Bash bootstrap script'
+temp_origin="$validation_root/bash-temp-origin"
+mkdir -p "$temp_origin"
+while IFS= read -r -d '' item; do
+  cp -a -- "$item" "$temp_origin/"
+done < <(find "$repository_root" -mindepth 1 -maxdepth 1 \
+  ! -name .git ! -name .idea ! -name .build-tools ! -name .test-work ! -name target -print0)
+(
+  cd "$temp_origin"
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git add -A
+  git commit -q -m "test initial commit"
+)
+
+bootstrap_root="$validation_root/bash-bootstrap-root"
+mkdir -p "$bootstrap_root"
+(
+  cd "$bootstrap_root"
+  REPO_URL="$temp_origin" bash "$repository_root/bootstrap.sh" \
+    --project-name bash-boot-app \
+    --package-name com.example.bashboot \
+    --migration-tool flyway \
+    --spring-data-jpa true \
+    --blaze-persistence true \
+    --extra-service-modules 0
+)
+boot_project="$bootstrap_root/bash-boot-app"
+assert_path_exists "$boot_project/bash-boot-app-app/bash-boot-app-rest/pom.xml"
+assert_path_missing "$boot_project/init.sh"
+assert_path_missing "$boot_project/init.ps1"
+assert_path_missing "$boot_project/bootstrap.sh"
+assert_path_missing "$boot_project/bootstrap.ps1"
+assert_git_clean "$boot_project"
+
 write_step 'All Bash initializer validation scenarios passed.'

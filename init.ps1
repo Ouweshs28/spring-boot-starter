@@ -295,6 +295,7 @@ function Configure-AppPom {
 
     <dependencyManagement>
         <dependencies>
+            <!-- Internal modules -->
             <dependency>
                 <groupId>__PACKAGE_NAME__</groupId>
                 <artifactId>__PROJECT_NAME__-persistence</artifactId>
@@ -305,6 +306,7 @@ function Configure-AppPom {
                 <artifactId>__PROJECT_NAME__-service</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- External dependencies -->
 __BLAZE_DEPENDENCY_MANAGEMENT__            <dependency>
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
@@ -1356,7 +1358,8 @@ if ($moduleCount -gt 0) {
                 foreach ($filePath in @(
                         ('{0}-app\pom.xml' -f $ProjectName),
                         ('{0}-app\{0}-rest\pom.xml' -f $ProjectName),
-                        ('{0}\pom.xml' -f $existingServiceDir)
+                        ('{0}\pom.xml' -f $existingServiceDir),
+                        ('{0}-app\{0}-image\src\main\resources\docker\app\Dockerfile' -f $ProjectName)
                     )) {
                     if (Test-Path $filePath) {
                         $content = [System.IO.File]::ReadAllText($filePath, [System.Text.Encoding]::UTF8)
@@ -1447,7 +1450,27 @@ if ($moduleCount -gt 0) {
         Write-TemplateFile -Path "$modDir\pom.xml" -Template $modulePomTemplate -Values (Get-TemplateValues @{ FULL_MOD = $fullMod })
 
         $appPomText = $appPomText -replace '(?m)([ \t]*</modules>)', "`t`t<module>$fullMod</module>`r`n`$1"
+        $modDep = "`t`t`t<dependency>`r`n`t`t`t`t<groupId>$PackageName</groupId>`r`n`t`t`t`t<artifactId>$fullMod</artifactId>`r`n`t`t`t`t<version>`${project.version}</version>`r`n`t`t`t</dependency>`r`n"
+        if ($appPomText -match '<!-- External dependencies -->') {
+            $appPomText = $appPomText -replace '(?m)([ \t]*<!-- External dependencies -->)', "$modDep`$1"
+        } elseif ($appPomText -match '(?s)(<dependencyManagement>.*?<dependencies>.*?)([ \t]*)(</dependencies>\s*</dependencyManagement>)') {
+            $appPomText = $appPomText -replace '(?s)(<dependencyManagement>.*?<dependencies>.*?)([ \t]*)(</dependencies>\s*</dependencyManagement>)', "`$1$modDep`$2`$3"
+        }
         [System.IO.File]::WriteAllText($appPomPath, $appPomText, $Utf8NoBom)
+
+        $dockerfilePath = '{0}-app\{0}-image\src\main\resources\docker\app\Dockerfile' -f $ProjectName
+        if (Test-Path $dockerfilePath) {
+            $dockerContent = [System.IO.File]::ReadAllText($dockerfilePath, [System.Text.Encoding]::UTF8)
+            if ($dockerContent -notmatch [regex]::Escape("{0}-app/{1}/pom.xml" -f $ProjectName, $fullMod)) {
+                $copyPomAnchor = '(?m)([ \t]*COPY [^\r\n]*-rest/pom\.xml[^\r\n]*)'
+                $newCopyPom = "`r`nCOPY {0}-app/{1}/pom.xml          {0}-app/{1}/" -f $ProjectName, $fullMod
+                $dockerContent = $dockerContent -replace $copyPomAnchor, "`$1`$newCopyPom"
+                $copySrcAnchor = '(?m)([ \t]*COPY [^\r\n]*-rest/src[^\r\n]*)'
+                $newCopySrc = "`r`nCOPY {0}-app/{1}/src         {0}-app/{1}/src" -f $ProjectName, $fullMod
+                $dockerContent = $dockerContent -replace $copySrcAnchor, "`$1`$newCopySrc"
+                [System.IO.File]::WriteAllText($dockerfilePath, $dockerContent, $Utf8NoBom)
+            }
+        }
         Write-Success "  Created: $fullMod"
         $createdMods += $modName
     }

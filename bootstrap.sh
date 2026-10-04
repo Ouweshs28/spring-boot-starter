@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/Ouweshs28/spring-boot-starter.git"
+REPO_URL="${REPO_URL:-https://github.com/Ouweshs28/spring-boot-starter.git}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()    { echo -e "${CYAN}$*${NC}"; }
@@ -117,7 +117,7 @@ INIT_ARGS=(--project-name "$PROJECT_NAME" --package-name "$PACKAGE_NAME")
 (( JPA_EXPLICIT )) && INIT_ARGS+=(--spring-data-jpa "$SPRING_DATA_JPA")
 (( BLAZE_EXPLICIT )) && INIT_ARGS+=(--blaze-persistence "$BLAZE_PERSISTENCE")
 (( EXTRA_MODULES_EXPLICIT )) && INIT_ARGS+=(--extra-service-modules "$EXTRA_SERVICE_MODULES")
-./init.sh "${INIT_ARGS[@]}"
+bash ./init.sh "${INIT_ARGS[@]}"
 
 echo ""
 success "Your project '$PROJECT_NAME' is ready in ./$PROJECT_NAME"

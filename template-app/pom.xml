@@ -49,7 +49,7 @@
 				<artifactId>template-service</artifactId>
 				<version>${project.version}</version>
 			</dependency>
-			<!-- Lombok -->
+			<!-- External dependencies -->
 			<!-- Blaze-Persistence BOM (covers core + entity-view artifacts) -->
 			<dependency>
 				<groupId>com.blazebit</groupId>

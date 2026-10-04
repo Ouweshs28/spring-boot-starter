@@ -35,12 +35,20 @@ Both methods prompt for:
 
 You can also pass everything non-interactively with flags.
 
-For example, this passes options through the PowerShell bootstrap script:
+For example, through PowerShell:
 
 ```powershell
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Ouweshs28/spring-boot-starter/main/bootstrap.ps1))) `
   -ProjectName my-app -PackageName com.example.myapp -MigrationTool liquibase `
   -SpringDataJpa true -BlazePersistence false -ExtraServiceModules 0
+```
+
+Or through Shell:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Ouweshs28/spring-boot-starter/main/bootstrap.sh) \
+  -p my-app -n com.example.myapp -m liquibase \
+  -j true -b false -s 0
 ```
 
 ---
@@ -198,17 +206,26 @@ The project ships with a helper script that scaffolds a new Maven service module
 ### PowerShell (Windows)
 
 ```powershell
+# Interactive
 .\add-module.ps1 -ModuleName payment
+
+# Non-interactive
+.\add-module.ps1 -ModuleName payment -Yes
 ```
 
 ### Bash (Linux / macOS)
 
 ```bash
 chmod +x add-module.sh
+
+# Interactive
 ./add-module.sh --module-name payment
+
+# Non-interactive
+./add-module.sh --module-name payment -y
 ```
 
-Both scripts will prompt for confirmation before making any changes.
+Both scripts will prompt for confirmation before making any changes (unless `-Yes` / `-y` is provided).
 
 ### What the script does
 
